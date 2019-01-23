@@ -20,6 +20,7 @@ function [cfg] = ft_singleplotER(cfg, varargin)
 %                       (not possible for mean over multiple channels, or when input contains multiple subjects
 %                       or trials)
 %   cfg.maskstyle     = style used for masking of data, 'box', 'thickness' or 'saturation' (default = 'box')
+%   cfg.maskfacealpha = mask transparency value between 0 and 1
 %   cfg.xlim          = 'maxmin' or [xmin xmax] (default = 'maxmin')
 %   cfg.ylim          = 'maxmin', 'maxabs', 'zeromax', 'minzero', or [ymin ymax] (default = 'maxmin')
 %   cfg.channel       = nx1 cell-array with selection of channels (default = 'all')
@@ -162,6 +163,7 @@ cfg.maskparameter   = ft_getopt(cfg, 'maskparameter',  []);
 cfg.linestyle       = ft_getopt(cfg, 'linestyle',     '-');
 cfg.linewidth       = ft_getopt(cfg, 'linewidth',      0.5);
 cfg.maskstyle       = ft_getopt(cfg, 'maskstyle',     'box');
+cfg.maskfacealpha   = ft_getopt(cfg, 'maskfacealpha', 1);
 cfg.channel         = ft_getopt(cfg, 'channel',       'all');
 cfg.title           = ft_getopt(cfg, 'title',          []);
 cfg.directionality  = ft_getopt(cfg, 'directionality', []);
@@ -262,7 +264,7 @@ else
   assert(~isempty(cfg.trials), 'empty specification of cfg.trials for data with repetitions');
 end
 
-% parse cfg.channel 
+% parse cfg.channel
 if isfield(cfg, 'channel') && isfield(varargin{1}, 'label')
   cfg.channel = ft_channelselection(cfg.channel, varargin{1}.label);
 elseif isfield(cfg, 'channel') && isfield(varargin{1}, 'labelcmb')
@@ -395,9 +397,9 @@ if ~isnumeric(cfg.ylim)
   ymax = [];
   for i=1:Ndata
     % Select the channels in the data that match with the layout and that are selected for plotting
-    dat = mean(varargin{i}.(cfg.parameter)(selchan,selx),1); % mean over channels, as that is what will be plotted 
-    ymin = min([ymin min(min(min(dat)))]);
-    ymax = max([ymax max(max(max(dat)))]);
+    dat = nanmean(varargin{i}.(cfg.parameter)(selchan,selx),1); % mean over channels, as that is what will be plotted
+    ymin = nanmin([ymin nanmin(nanmin(nanmin(dat)))]);
+    ymax = nanmax([ymax nanmax(nanmax(nanmax(dat)))]);
   end
   if strcmp(cfg.ylim, 'maxabs') % handle maxabs, make y-axis center on 0
     ymax = max([abs(ymax) abs(ymin)]);
@@ -434,11 +436,11 @@ hold on
 yval = mean(datamatrix, 2); % over channels
 yval = reshape(yval, size(yval,1), size(yval,3));
 mask = squeeze(mean(maskmatrix, 1)); % over channels
-
-ft_plot_vector(xval, yval, 'style', cfg.linestyle{i}, 'color', graphcolor, ...
+for i=1:Ndata
+ft_plot_vector(xval, yval(i,:), 'style', cfg.linestyle{i}, 'color', graphcolor(i), ...
   'highlight', mask, 'highlightstyle', cfg.maskstyle, 'linewidth', cfg.linewidth, ...
-  'hlim', [xmin xmax], 'vlim', [ymin ymax]);
-
+  'hlim', [xmin xmax], 'vlim', [ymin ymax], 'facealpha', cfg.maskfacealpha);
+end
 colorLabels = [];
 if Ndata > 1
   for i=1:Ndata
@@ -450,9 +452,13 @@ if Ndata > 1
   end
 end
 
-% set xlim and ylim:
-xlim([xmin xmax]);
-ylim([ymin ymax]);
+% set xlim and ylim
+if xmin~=xmax
+  xlim([xmin xmax]);
+end
+if ymin~=ymax
+  ylim([ymin ymax]);
+end
 
 % adjust mask box extents to ymin/ymax
 if ~isempty(cfg.maskparameter)
@@ -613,4 +619,3 @@ else
       ylim([varargin{3} varargin{4}])
   end % switch
 end % if
-
