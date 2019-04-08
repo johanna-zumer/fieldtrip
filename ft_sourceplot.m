@@ -1426,17 +1426,39 @@ switch cfg.method
     ft_error('unsupported method "%s"', cfg.method);
 end
 
+% this is needed for the figure title
+if isfield(cfg, 'dataname') && ~isempty(cfg.dataname)
+  dataname = cfg.dataname;
+elseif isfield(cfg, 'inputfile') && ~isempty(cfg.inputfile)
+  dataname = cfg.inputfile;
+elseif nargin>1
+  dataname = arrayfun(@inputname, 2:nargin, 'UniformOutput', false);
+else
+  dataname = {};
+end
+
+% set the figure window title
+if ~isempty(dataname)
+  set(gcf, 'Name', sprintf('%d: %s: %s', double(gcf), mfilename, join_str(', ', dataname)));
+else
+  set(gcf, 'Name', sprintf('%d: %s', double(gcf), mfilename));
+end
+set(gcf, 'NumberTitle', 'off');
+
 % do the general cleanup and bookkeeping at the end of the function
 ft_postamble debug
 ft_postamble trackconfig
 ft_postamble previous functional
 ft_postamble provenance
+ft_postamble savefig
 
-% add a menu to the figure
-% also, delete any possibly existing previous menu, this is safe because delete([]) does nothing
-ftmenu = uimenu(gcf, 'Label', 'FieldTrip');
-uimenu(ftmenu, 'Label', 'Show pipeline',  'Callback', {@menu_pipeline, cfg});
-uimenu(ftmenu, 'Label', 'About',  'Callback', @menu_about);
+% add a menu to the figure, the subplots are well-controlled in this case
+menu_fieldtrip(gcf, cfg, true);
+
+if ~ft_nargout
+  % don't return anything
+  clear cfg
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1478,13 +1500,33 @@ opt.ijk = opt.ijk(1:3);
 str1 = sprintf('voxel %d, indices [%d %d %d]', sub2ind(functional.dim(1:3), xi, yi, zi), opt.ijk);
 
 if isfield(functional, 'coordsys') && isfield(functional, 'unit')
-  str2 = sprintf('%s coordinates [%.1f %.1f %.1f] %s', functional.coordsys, xyz(1:3), functional.unit);
+  % print the location with mm accuracy
+  switch functional.unit
+    case 'm'
+      str2 = sprintf('%s coordinates [%.3f %.3f %.3f] %s', functional.coordsys, xyz(1:3), functional.unit);
+    case 'cm'
+      str2 = sprintf('%s coordinates [%.1f %.1f %.1f] %s', functional.coordsys, xyz(1:3), functional.unit);
+    case 'mm'
+      str2 = sprintf('%s coordinates [%.0f %.0f %.0f] %s', functional.coordsys, xyz(1:3), functional.unit);
+    otherwise
+      str2 = sprintf('%s coordinates [%f %f %f] %s', functional.coordsys, xyz(1:3), functional.unit);
+  end
 elseif ~isfield(functional, 'coordsys') && isfield(functional, 'unit')
-  str2 = sprintf('location [%.1f %.1f %.1f] %s', xyz(1:3), functional.unit);
+  % print the location with mm accuracy
+  switch functional.unit
+    case 'm'
+      str2 = sprintf('location [%.3f %.3f %.3f] %s', xyz(1:3), functional.unit);
+    case 'cm'
+      str2 = sprintf('location [%.1f %.1f %.1f] %s', xyz(1:3), functional.unit);
+    case 'mm'
+      str2 = sprintf('location [%.0f %.0f %.0f] %s', xyz(1:3), functional.unit);
+    otherwise
+      str2 = sprintf('location [%f %f %f] %s', xyz(1:3), functional.unit);
+  end
 elseif isfield(functional, 'coordsys') && ~isfield(functional, 'unit')
-  str2 = sprintf('%s coordinates [%.1f %.1f %.1f]', functional.coordsys, xyz(1:3));
+  str2 = sprintf('%s coordinates [%.3f %.3f %.3f]', functional.coordsys, xyz(1:3));
 elseif ~isfield(functional, 'coordsys') && ~isfield(functional, 'unit')
-  str2 = sprintf('location [%.1f %.1f %.1f]', xyz(1:3));
+  str2 = sprintf('location [%.3f %.3f %.3f]', xyz(1:3));
 else
   str2 = '';
 end
@@ -1524,6 +1566,7 @@ if opt.hasatlas
     lab = 'NA';
     %fprintf('atlas labels: not found\n');
   else
+    lab = unique(lab);
     tmp = sprintf('%s', strrep(lab{1}, '_', ' '));
     for i=2:length(lab)
       tmp = [tmp sprintf(', %s', strrep(lab{i}, '_', ' '))];
