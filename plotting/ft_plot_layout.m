@@ -26,6 +26,7 @@ function ft_plot_layout(layout, varargin)
 %   'fontunits'   =
 %   'fontname'    =
 %   'fontweight'  =
+%   'interpreter' = string, 'none', 'tex' or 'latex'
 %
 % It is possible to plot the object in a local pseudo-axis (c.f. subplot), which is specfied as follows
 %   'hpos'        = horizontal position of the lower left corner of the local axes
@@ -83,7 +84,7 @@ fontname    = ft_getopt(varargin, 'fontname',   get(0, 'defaulttextfontname'));
 fontweight  = ft_getopt(varargin, 'fontweight', get(0, 'defaulttextfontweight'));
 fontunits   = ft_getopt(varargin, 'fontunits',  get(0, 'defaulttextfontunits'));
 % these have to do with the font
-interpreter  = ft_getopt(varargin, 'interpreter', 'tex');
+interpreter  = ft_getopt(varargin, 'interpreter', 'tex'); % none, tex or latex
 
 % some stuff related to some refined label plotting
 labelrotate   = ft_getopt(varargin, 'labelrotate',  0);
@@ -190,7 +191,7 @@ if label
       labelalignv = repmat({labelalignv},[n 1]);
     end
     if numel(Lbl)~=numel(labelrotate)||numel(Lbl)~=numel(labelalignh)||numel(Lbl)~=numel(labelalignv)
-      eror('there is something wrong with the input arguments');
+      error('there is something wrong with the input arguments');
     end
     for k = 1:numel(Lbl)
       h = text(X(k)+labelxoffset, Y(k)+labelyoffset, Lbl{k}, 'interpreter', interpreter, 'horizontalalignment', labelalignh{k}, 'verticalalignment', labelalignv{k}, 'rotation', labelrotate(k), 'color', fontcolor, 'fontunits', fontunits, 'fontsize', fontsize, 'fontname', fontname, 'fontweight', fontweight);
